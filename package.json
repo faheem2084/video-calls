@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "@types/webrtc": "^0.0.44"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
