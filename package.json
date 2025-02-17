@@ -3,6 +3,8 @@
     "@types/webrtc": "^0.0.44"
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "mkcert": "^3.2.0",
+    "socketio": "^1.0.0"
   }
 }
