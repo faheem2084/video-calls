@@ -18,6 +18,61 @@ const io = socketio(expressServer);
 
 expressServer.listen(8181);
 
+const offers=[
+    // offererUserName
+    // offer
+    // iceCandidates
+    // AnswererUserName
+    //answer
+    // answerericeCandidates
+];
+
+const connectedSockets = [
+    // userName, socket
+]
+
+
 io.on('connection', (socket)=>{
-    console.log("someone connection");
+    // console.log("someone connection");
+
+    const userName = socket.handshake?.auth?.userName || socket.handshake.query.userName
+    const password = socket.handshake?.auth?.password || socket.handshake.query.password
+
+
+    connectedSockets.push({
+        socketId: socket.id,
+        userName,
+    })
+
+    socket.on('newOffer', newOffer=>{
+        offers.push({
+            offererUserName : userName,
+            offer: newOffer, 
+            iceCandidates: [],
+            answererUserName: null,
+            answer: null,
+            answererIceCandidates: []
+        })
+        socket.broadcast.emit('newOfferAwaiting', offers.slice(-1));
+
+    })
+
+    socket.on('sendIceCandidateToSignalingServer', iceCandidateObj=>{
+        const {didIOffer, iceUserName, iceCandidate} = iceCandidateObj;
+        console.log("here1...")
+        console.log("Ice Username: " + iceUserName);
+
+        if(didIOffer){
+            console.log("here 2....")
+            const offerInOffers = offers.find ( o=> o.offererUserName === iceUserName)
+            if(offerInOffers){
+                console.log("here 4......")
+                offerInOffers.offerIceCandiates.push(iceCandidate);
+                console.log("-------------->"+ iceCandidate )
+            }
+        }
+        console.log(offers)
+    })
+
+
 } )
