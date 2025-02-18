@@ -33,11 +33,8 @@ const connectedSockets = [
 
 
 io.on('connection', (socket)=>{
-    // console.log("someone connection");
-
-    const userName = socket.handshake?.auth?.userName || socket.handshake.query.userName
-    const password = socket.handshake?.auth?.password || socket.handshake.query.password
-
+    const userName = socket.handshake.auth.userName
+    const password = socket.handshake.auth.password
 
     connectedSockets.push({
         socketId: socket.id,

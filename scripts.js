@@ -1,5 +1,6 @@
-const userName = "Rob-"+Math.floor(Math.random() * 100000)
+const userName = "Faheem-" + Math.floor(Math.random() * 1000)
 const password = "x";
+
 document.querySelector('#user-name').innerHTML = userName;
 
 const socket = io.connect('https://localhost:8181/',{
