@@ -3,7 +3,7 @@ const password = "x";
 
 document.querySelector('#user-name').innerHTML = userName;
 
-const socket = io.connect('https://localhost:8181/',{
+const socket = io.connect('https://192.168.100.152:8181/',{
     auth: {
         userName,password
     }
@@ -34,14 +34,7 @@ let peerConfiguration = {
 
 const call = async e=>{
     console.log("call clicked....")
-    const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: false,
-    });
-
-    localVideoEl.srcObject = stream;
-    localStream = stream;
-
+    await fetchUserMedia();
     await createPeerConnection();
 
     // create offer
@@ -58,17 +51,68 @@ const call = async e=>{
 
 }
 
-const createPeerConnection = ()=>{
+const addAnswer = async (offerObj)=>{
+    await peerConnection.setRemoteDescription(offerObj.answer)
+}
+const answerOffer = async (offerObj) =>{
+    console.log(offerObj);
+    await fetchUserMedia();
+    await createPeerConnection(offerObj);
+    const answer = await peerConnection.createAnswer({});
+    await peerConnection.setLocalDescription(answer);
+    console.log(answer);
+    // console.log(peerConnection.signalingState);
+
+
+    offerObj.answer = answer;
+    const offerIceCandidates = await socket.emitWithAck('newAnswer', offerObj);
+    offerIceCandidates.forEach(c=>{
+        peerConnection.addIceCandidate(c);
+        console.log("=====================")
+    })
+
+
+}
+
+
+const fetchUserMedia = async () =>{
+    return new Promise( async(resolve, reject) =>{
+        try{
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: false,
+            });
+            localVideoEl.srcObject = stream;
+            localStream = stream;
+            resolve();
+        }catch(err){
+            console.log(err)
+            reject();
+        }       
+    })
+}
+
+const createPeerConnection = (offerObj)=>{
     return new Promise( async(resolve, reject)=>{
         peerConnection = await new RTCPeerConnection(peerConfiguration);
-        console.log("here 1..........");
+
+        remoteStream = new MediaStream();
+        remoteVideoEl.srcObject = remoteStream;
+
+
         localStream.getTracks().forEach(track => {
             peerConnection.addTrack(track, localStream)
         });
 
+        peerConnection.addEventListener("signalingstatechange", (event) => {
+            console.log(event);
+            console.log("Signalling State: " + peerConnection.signalingState);
+        });
+
+
         peerConnection.addEventListener('icecandidate',e=>{
-            console.log('........Ice candidate found!......')
-            console.log(e)
+            // console.log('........Ice candidate found!......')
+            // console.log(e)
             if(e.candidate){
                 socket.emit('sendIceCandidateToSignalingServer',{
                     iceCandidate: e.candidate,
@@ -78,12 +122,31 @@ const createPeerConnection = ()=>{
                 })
             }
 
-        });        
+        });    
+
+        peerConnection.addEventListener('track', e=>{
+            e.streams[0].getTracks().forEach(track=>{
+                remoteStream.addTrack(track, remoteStream)
+            
+            })
+        })
+        
+        if(offerObj){
+            // console.log(peerConnection.signalingState);
+            await peerConnection.setRemoteDescription(offerObj.offer);
+            // console.log(peerConnection.signalingState);
+
+        } 
 
         resolve();
 
     })
 }
 
+
+const addNewIceCandidate = iceCandidate=>{
+    peerConnection.addIceCandidate(iceCandidate);
+
+}
 
 document.querySelector('#call').addEventListener('click', call);

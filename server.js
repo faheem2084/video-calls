@@ -41,11 +41,16 @@ io.on('connection', (socket)=>{
         userName,
     })
 
+    if(offers.length){
+        socket.emit('availableOffers', offers);
+    }
+
+
     socket.on('newOffer', newOffer=>{
         offers.push({
             offererUserName : userName,
             offer: newOffer, 
-            iceCandidates: [],
+            offerIceCandidates: [],
             answererUserName: null,
             answer: null,
             answererIceCandidates: []
@@ -54,21 +59,61 @@ io.on('connection', (socket)=>{
 
     })
 
+
+    socket.on('newAnswer', (offerObj, ackFunction)=>{
+        // console.log(offerObj);
+        const socketToAnswer = connectedSockets.find(s=>s.userName === offerObj.offererUserName)
+        if(!socketToAnswer){
+            return
+        }
+        const socketIdToAnswer = socketToAnswer.socketId;
+        const offerToUpdate = offers.find(o=>o.offererUserName === offerObj.offererUserName);
+        if(!offerToUpdate){
+            console.log('No matching offer.');
+            return;
+        }
+
+        ackFunction(offerToUpdate.offerIceCandidates);
+        offerToUpdate.answer = offerObj.answer;
+        offerToUpdate.answererUserName = userName;
+        console.log("------- here1 in newAnswer()");
+        socket.to(socketIdToAnswer).emit('answerResponse', offerToUpdate);
+        console.log("------- here 2 in newAnswer()");
+
+
+    })
+
     socket.on('sendIceCandidateToSignalingServer', iceCandidateObj=>{
         const {didIOffer, iceUserName, iceCandidate} = iceCandidateObj;
-        console.log("here1...")
-        console.log("Ice Username: " + iceUserName);
 
         if(didIOffer){
-            console.log("here 2....")
-            const offerInOffers = offers.find ( o=> o.offererUserName === iceUserName)
+            const offerInOffers = offers.find(o=>o.offererUserName === iceUserName);
             if(offerInOffers){
-                console.log("here 4......")
-                offerInOffers.offerIceCandiates.push(iceCandidate);
-                console.log("-------------->"+ iceCandidate )
+                offerInOffers.offerIceCandidates.push(iceCandidate);
+                if(offerInOffers.answererUserName){
+                    // pass it to the other socket..
+                    const socketToSendTo = connectedSockets.find(s=>s.userName ===offerInOffers.answererUserName);
+                    if(socketToSendTo){
+                        consol
+                        socket.to(socketToSendTo.socketId).emit('receivedIceCandidateFromServer', iceCandidate);
+                    }else{
+                        console.log("ice found, but answer not found")
+                    }
+                }
+            }    
+        }else{
+            // ice is coming from answerer
+            const offerInOffers = offers.find(o=>o.answererUserName === iceUserName);
+            const socketToSendTo = connectedSockets.find(s=>s.userName ===offerInOffers.offererUserName);
+            if(socketToSendTo){
+                socket.to(socketToSendTo.socketId).emit('receivedIceCandidateFromServer', iceCandidate);
+            }else{
+                console.log("ice candidate found, but offerer not found")
             }
+
         }
-        console.log(offers)
+        
+        // console.log(offers)
     })
 
 
